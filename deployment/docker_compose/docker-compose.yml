@@ -166,6 +166,8 @@ services:
     depends_on:
       - api_server
     restart: unless-stopped
+    ports:
+      - "3002:3000"
     environment:
       - INTERNAL_URL=${INTERNAL_URL:-http://api_server:4040}
     networks:
@@ -210,6 +212,8 @@ services:
     # Optional, only for debugging purposes
     volumes:
       - mcp_server_logs:/var/log/onyx
+    networks:
+      - open-webui
 
   inference_model_server:
     image: ${ONYX_MODEL_SERVER_IMAGE:-onyxdotapp/onyx-model-server:${IMAGE_TAG:-latest}}
