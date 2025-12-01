@@ -45,7 +45,7 @@ services:
     command: >
       /bin/sh -c "alembic upgrade head &&
       echo \"Starting Onyx Api Server\" &&
-      uvicorn onyx.main:app --host 0.0.0.0 --port 4040"
+      uvicorn onyx.main:app --host 0.0.0.0 --port 8080"
     # Check env.template and copy to .env for env vars
     env_file:
       - path: .env
@@ -60,8 +60,8 @@ services:
     # DEV: To expose ports, either:
     # 1. Use docker-compose.dev.yml: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
     # 2. Uncomment the ports below
-    ports:
-      - "4040:4040"
+    # ports:
+    #   - "8080:8080"
     environment:
       # Auth Settings
       - AUTH_TYPE=${AUTH_TYPE:-basic}
@@ -85,8 +85,6 @@ services:
     # Optional, only for debugging purposes
     volumes:
       - api_server_logs:/var/log/onyx
-    networks:
-      - open-webui
 
   background:
     image: ${ONYX_BACKEND_IMAGE:-onyxdotapp/onyx-backend:${IMAGE_TAG:-latest}}
@@ -132,8 +130,6 @@ services:
       options:
         max-size: "50m"
         max-file: "6"
-    networks:
-      - open-webui
     # PRODUCTION: Uncomment the following lines if you need to include a custom CA certificate
     # This section enables the use of a custom CA certificate
     # If present, the custom CA certificate is mounted as a volume
@@ -166,12 +162,8 @@ services:
     depends_on:
       - api_server
     restart: unless-stopped
-    ports:
-      - "3002:3000"
     environment:
-      - INTERNAL_URL=${INTERNAL_URL:-http://api_server:4040}
-    networks:
-      - open-webui
+      - INTERNAL_URL=${INTERNAL_URL:-http://api_server:8080}
 
   mcp_server:
     image: ${ONYX_BACKEND_IMAGE:-onyxdotapp/onyx-backend:${IMAGE_TAG:-latest}}
@@ -212,8 +204,6 @@ services:
     # Optional, only for debugging purposes
     volumes:
       - mcp_server_logs:/var/log/onyx
-    networks:
-      - open-webui
 
   inference_model_server:
     image: ${ONYX_MODEL_SERVER_IMAGE:-onyxdotapp/onyx-model-server:${IMAGE_TAG:-latest}}
@@ -250,8 +240,6 @@ services:
       options:
         max-size: "50m"
         max-file: "6"
-    networks:
-      - open-webui
 
   indexing_model_server:
     image: ${ONYX_MODEL_SERVER_IMAGE:-onyxdotapp/onyx-model-server:${IMAGE_TAG:-latest}}
@@ -290,8 +278,6 @@ services:
       options:
         max-size: "50m"
         max-file: "6"
-    networks:
-      - open-webui
 
   relational_db:
     image: postgres:15.2-alpine
@@ -312,8 +298,6 @@ services:
     #   - "5432:5432"
     volumes:
       - db_volume:/var/lib/postgresql/data
-    networks:
-      - open-webui
 
   # This container name cannot have an underscore in it due to Vespa expectations of the URL
   index:
@@ -337,48 +321,46 @@ services:
       options:
         max-size: "50m"
         max-file: "6"
-    networks:
-      - open-webui
 
-  # nginx:
-  #   image: nginx:1.25.5-alpine
-  #   restart: unless-stopped
-  #   # nginx will immediately crash with `nginx: [emerg] host not found in upstream`
-  #   # if api_server / web_server are not up
-  #   depends_on:
-  #     - api_server
-  #     - web_server
-  #   env_file:
-  #     - path: .env
-  #       required: false
-  #   environment:
-  #     - DOMAIN=localhost
-  #     # Nginx proxy timeout settings (in seconds)
-  #     - NGINX_PROXY_CONNECT_TIMEOUT=${NGINX_PROXY_CONNECT_TIMEOUT:-300}
-  #     - NGINX_PROXY_SEND_TIMEOUT=${NGINX_PROXY_SEND_TIMEOUT:-300}
-  #     - NGINX_PROXY_READ_TIMEOUT=${NGINX_PROXY_READ_TIMEOUT:-300}
-  #   ports:
-  #     - "${HOST_PORT_80:-80}:80"
-  #     - "${HOST_PORT:-3000}:80" # allow for localhost:3000 usage, since that is the norm
-  #   volumes:
-  #     - ../data/nginx:/etc/nginx/conf.d
-  #   # PRODUCTION: Add SSL certificate volumes for HTTPS support:
-  #   #   - ../data/certbot/conf:/etc/letsencrypt
-  #   #   - ../data/certbot/www:/var/www/certbot
-  #   logging:
-  #     driver: json-file
-  #     options:
-  #       max-size: "50m"
-  #       max-file: "6"
-  #   # The specified script waits for the api_server to start up.
-  #   # Without this we've seen issues where nginx shows no error logs but
-  #   # does not receive any traffic
-  #   # NOTE: we have to use dos2unix to remove Carriage Return chars from the file
-  #   # in order to make this work on both Unix-like systems and windows
-  #   # PRODUCTION: Change to app.conf.template.prod for production nginx config
-  #   command: >
-  #     /bin/sh -c "dos2unix /etc/nginx/conf.d/run-nginx.sh
-  #     && /etc/nginx/conf.d/run-nginx.sh app.conf.template"
+  nginx:
+    image: nginx:1.25.5-alpine
+    restart: unless-stopped
+    # nginx will immediately crash with `nginx: [emerg] host not found in upstream`
+    # if api_server / web_server are not up
+    depends_on:
+      - api_server
+      - web_server
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DOMAIN=localhost
+      # Nginx proxy timeout settings (in seconds)
+      - NGINX_PROXY_CONNECT_TIMEOUT=${NGINX_PROXY_CONNECT_TIMEOUT:-300}
+      - NGINX_PROXY_SEND_TIMEOUT=${NGINX_PROXY_SEND_TIMEOUT:-300}
+      - NGINX_PROXY_READ_TIMEOUT=${NGINX_PROXY_READ_TIMEOUT:-300}
+    ports:
+      - "${HOST_PORT_80:-80}:80"
+      - "${HOST_PORT:-3000}:80" # allow for localhost:3000 usage, since that is the norm
+    volumes:
+      - ../data/nginx:/etc/nginx/conf.d
+    # PRODUCTION: Add SSL certificate volumes for HTTPS support:
+    #   - ../data/certbot/conf:/etc/letsencrypt
+    #   - ../data/certbot/www:/var/www/certbot
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "6"
+    # The specified script waits for the api_server to start up.
+    # Without this we've seen issues where nginx shows no error logs but
+    # does not receive any traffic
+    # NOTE: we have to use dos2unix to remove Carriage Return chars from the file
+    # in order to make this work on both Unix-like systems and windows
+    # PRODUCTION: Change to app.conf.template.prod for production nginx config
+    command: >
+      /bin/sh -c "dos2unix /etc/nginx/conf.d/run-nginx.sh
+      && /etc/nginx/conf.d/run-nginx.sh app.conf.template"
 
   cache:
     image: redis:7.4-alpine
@@ -397,8 +379,6 @@ services:
     # Use tmpfs to prevent creation of anonymous volumes for /data
     tmpfs:
       - /data
-    networks:
-      - open-webui
 
   minio:
     image: minio/minio:RELEASE.2025-07-23T15-54-02Z-cpuv1
@@ -425,8 +405,6 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
-    networks:
-      - open-webui
 
   code-interpreter:
     image: onyxdotapp/code-interpreter:${CODE_INTERPRETER_IMAGE_TAG:-latest}
@@ -449,8 +427,6 @@ services:
     user: root
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - open-webui
 
     # uncomment below + comment out the above to use the `docker-in-docker` execution mode
     # privileged: true
@@ -483,7 +459,3 @@ volumes:
   mcp_server_logs:
   inference_model_server_logs:
   indexing_model_server_logs:
-
-networks:
-  open-webui:
-    external: true
