@@ -13,26 +13,24 @@ services:
 
   # Expose web_server for Nginx Proxy Manager to connect
   web_server:
-    expose:
-      # - "3000"
-      # Optional: Use ports if NPM is on different docker network or not using Docker
-      # Change the left port (host) to avoid conflicts with existing services
-      # ports:
+    # Expose port to host for NPM to connect (use different port to avoid conflicts)
+    ports:
       - "127.0.0.1:3001:3000" # Use port 3001 on host → 3000 in container
     networks:
       - default
-      - onyx_network # Connect to NPM's network
+      - onyx_network
     environment:
       - INTERNAL_URL=${INTERNAL_URL:-http://api_server:8080}
 
   # Ensure api_server is accessible for internal requests
   api_server:
     ports:
-      - "127.0.0.1:8080:8080" # Bind เฉพาะ localhost
+      - "127.0.0.1:8081:8080" # Use port 8081 on host → 8080 in container
     networks:
       - default
-      - onyx_network # Optional: if you need direct API access
+      - onyx_network
 
 networks:
   onyx_network:
     external: true
+    name: ${NPM_NETWORK:-onyx_network}
