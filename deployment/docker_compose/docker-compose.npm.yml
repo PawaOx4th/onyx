@@ -15,7 +15,7 @@ services:
   web_server:
     # Expose port to host for NPM to connect (use different port to avoid conflicts)
     ports:
-      - "127.0.0.1:3001:3000" # Use port 3001 on host → 3000 in container
+      - "127.0.0.1:3002:3000"  # Use port 3002 on host → 3000 in container
     networks:
       - default
       - onyx_network
