@@ -34,8 +34,5 @@ services:
       - onyx_network # Optional: if you need direct API access
 
 networks:
-  default:
-    name: onyx_network
   onyx_network:
     external: true
-    name: onyx_network # Change this to your NPM network name
